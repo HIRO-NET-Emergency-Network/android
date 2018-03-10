@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/tweet_recipientView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/tweet_recipientTitle"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent" />
+
+    <android.support.design.widget.TextInputLayout
+        android:id="@+id/tweet_recipientLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        app:layout_constraintTop_toBottomOf="@id/tweet_recipientView"
+        app:layout_constraintLeft_toLeftOf="parent" >
+
+        <android.support.design.widget.TextInputEditText
+            android:id="@+id/tweet_recipient"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/tweet_sampleRecipient"
+            android:inputType="textNoSuggestions"
+            android:singleLine="false" />
+
+    </android.support.design.widget.TextInputLayout>
+
+    <TextView
+        android:id="@+id/tweet_contentView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/tweet_contentTitle"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
+        app:layout_constraintTop_toBottomOf="@id/tweet_recipientLayout"
+        app:layout_constraintLeft_toLeftOf="parent" />
+
+    <android.support.design.widget.TextInputLayout
+        android:id="@+id/tweet_contentLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        app:layout_constraintTop_toBottomOf="@id/tweet_contentView"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintVertical_chainStyle="packed">
+
+        <android.support.design.widget.TextInputEditText
+            android:id="@+id/tweet_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/activity_vertical_margin"
+            android:hint="@string/tweet_sampleContent"
+            android:inputType="textMultiLine"
+            android:singleLine="false" />
+
+    </android.support.design.widget.TextInputLayout>
+
+    <android.support.v7.widget.AppCompatButton
+        android:id="@+id/tweet_sendButton"
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/tweet_send"
+        app:layout_constraintLeft_toLeftOf="@id/tweet_contentLayout"
+        app:layout_constraintRight_toRightOf="@id/tweet_contentLayout"
+        app:layout_constraintTop_toBottomOf="@id/tweet_contentLayout"/>
+
+</android.support.constraint.ConstraintLayout>

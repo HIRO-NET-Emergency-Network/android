@@ -1,3 +1,29 @@
 <resources>
-    <string name="app_name">Hiro Net</string>
+    <string name="app_name">HIRO-NET</string>
+    <string name="mail_tab">Gmail</string>
+    <string name="chat_tab">Chat</string>
+    <string name="tweet_tab">Twitter</string>
+    <string name="action_settings">Settings</string>
+    <!-- EmailFragment !-->
+    <string name="mail_addressTitle">To:</string>
+    <string name="mail_sampleAddress">sample@hiro-net.org</string>
+    <string name="mail_subjectTitle">Subject:</string>
+    <string name ="mail_sampleSubject">What is the purpose of this message?</string>
+    <string name="mail_bodyTitle">Body:</string>
+    <string name="mail_sampleBody">What do you want to say in this message?</string>
+    <string name="mail_send">Send</string>
+    <!-- ChatFragment !-->
+    <string name="chat_peerListTitle">Active Users in the HIRO-NET Mesh:</string>
+    <string name="chat_sampleContent">Enter your message here</string>
+    <string name="chat_sendButton">Send your message</string>
+    <!-- TweetFragment !-->
+    <string name="tweet_recipientTitle">Direct Message:</string>
+    <string name="tweet_sampleRecipient">\@(recipient\'s username)</string>
+    <string name="tweet_contentTitle">Subject (140 characters or less):</string>
+    <string name="tweet_sampleContent">Hello, Twitter!</string>
+    <string name="tweet_send">Tweet</string>
+    <!-- Bridgefy !-->
+    <string name="action_broadcast">Broadcast</string>
+    <string name="registration_error">A registration occurred. Make sure you\'re online
+        when you first install this application.</string>
 </resources>

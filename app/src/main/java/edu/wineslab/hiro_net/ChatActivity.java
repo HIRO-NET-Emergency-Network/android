@@ -40,7 +40,7 @@ public class ChatActivity extends AppCompatActivity {
     private String conversationName;
     private String conversationId;
 
-    @BindView(R.id.textMessage)
+    @BindView(R.id.txtMessage)
     EditText textMessage;
 
     MessagesRecyclerViewAdapter messagesAdapter =

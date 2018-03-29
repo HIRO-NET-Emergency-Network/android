@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -20,8 +21,10 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bridgefy.sdk.client.BFEnergyProfile;
 import com.bridgefy.sdk.client.Bridgefy;
 import com.bridgefy.sdk.client.BridgefyClient;
+import com.bridgefy.sdk.client.Config;
 import com.bridgefy.sdk.client.Device;
 import com.bridgefy.sdk.client.Message;
 import com.bridgefy.sdk.client.MessageListener;
@@ -49,7 +52,9 @@ public class ChatFragment extends Fragment {
 
     public static final String API_KEY = "26cce93d-416b-4e72-aa5c-39a9e893a293";
 
-    RecyclerViewAdapter peersAdapter = new RecyclerViewAdapter(new ArrayList<Peer>());
+    private RecyclerView peersRecyclerView;
+    private RecyclerViewAdapter peersAdapter = new RecyclerViewAdapter(new ArrayList<Peer>());
+    private RecyclerView.LayoutManager peersLayoutManager;
 
     public static ChatFragment newInstance() {
         ChatFragment fragment = new ChatFragment();
@@ -71,7 +76,12 @@ public class ChatFragment extends Fragment {
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
+        Toast.makeText(getContext(), "Created Recycler View",
+                Toast.LENGTH_SHORT).show();
+
         RecyclerView recyclerView = getActivity().findViewById(R.id.chat_peerList);
+        peersLayoutManager = new LinearLayoutManager(getActivity().getBaseContext());
+        recyclerView.setLayoutManager(peersLayoutManager);
         recyclerView.setAdapter(peersAdapter);
 
         if (isThingsDevice(getActivity())) {
@@ -83,6 +93,8 @@ public class ChatFragment extends Fragment {
             @Override
             public void onRegistrationSuccessful(BridgefyClient bridgefyClient) {
                 startBridgefy();
+                Toast.makeText(getContext(), "Successful Started Up Bridgefy",
+                        Toast.LENGTH_SHORT).show();
             }
 
             @Override
@@ -93,11 +105,9 @@ public class ChatFragment extends Fragment {
         });
     }
 
-
     @Override
     public void onDestroy() {
         super.onDestroy();
-
         if (getActivity().isFinishing()) { Bridgefy.stop(); }
     }
 
@@ -121,7 +131,10 @@ public class ChatFragment extends Fragment {
 
     // Start an instance of the Bridgefy controller
     private void startBridgefy() {
-        Bridgefy.start(messageListener, stateListener);
+        Config.Builder builder = new Config.Builder();
+        builder.setEnergyProfile(BFEnergyProfile.HIGH_PERFORMANCE);
+        builder.setEncryption(false);
+        Bridgefy.start(messageListener, stateListener, builder.build());
     }
 
     // Check if the current device is running Android Things
@@ -188,10 +201,14 @@ public class ChatFragment extends Fragment {
         return Peer.DeviceType.values()[eventOrdinal];
     }
 
-    StateListener stateListener = new StateListener() {
+    private StateListener stateListener = new StateListener() {
         @Override
         public void onDeviceConnected(final Device device, Session session) {
             // send our information to the Device
+
+            Toast.makeText(getContext(), "Connected to: " + device.getUserId(),
+                    Toast.LENGTH_SHORT).show();
+
             HashMap<String, Object> map = new HashMap<>();
             map.put("device_name", Build.MANUFACTURER + " " + Build.MODEL);
             map.put("device_type", Peer.DeviceType.ANDROID.ordinal());
@@ -207,7 +224,6 @@ public class ChatFragment extends Fragment {
         @Override
         public void onStartError(String message, int errorCode) {
             Log.e(TAG, "onStartError: " + message);
-
             if (errorCode == StateListener.INSUFFICIENT_PERMISSIONS) {
                 ActivityCompat.requestPermissions(getActivity(),
                         new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);

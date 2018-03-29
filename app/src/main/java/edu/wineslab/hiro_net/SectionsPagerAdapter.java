@@ -16,7 +16,7 @@ import edu.wineslab.hiro_net.Fragments.TweetFragment;
 public class SectionsPagerAdapter extends FragmentPagerAdapter {
     private Context mContext;
 
-    private SectionsPagerAdapter(FragmentManager fm, Context context) {
+    public SectionsPagerAdapter(FragmentManager fm, Context context) {
         super(fm);
         mContext = context;
     }

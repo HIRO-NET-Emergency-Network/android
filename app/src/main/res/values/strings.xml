@@ -24,6 +24,6 @@
     <string name="tweet_send">Tweet</string>
     <!-- Bridgefy !-->
     <string name="action_broadcast">Broadcast</string>
-    <string name="registration_error">A registration occurred. Make sure you\'re online
+    <string name="registration_error">A registration error occurred. Make sure you\'re online
         when you first install this application.</string>
 </resources>

@@ -12,14 +12,17 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bridgefy.sdk.client.BFEngineProfile;
 import com.bridgefy.sdk.client.Bridgefy;
+import com.bridgefy.sdk.client.Message.Builder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,24 +31,25 @@ import java.util.List;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import edu.wineslab.hiro_net.Entities.Me;
 import edu.wineslab.hiro_net.Entities.Message;
 import edu.wineslab.hiro_net.Entities.Peer;
 
-import static edu.wineslab.hiro_net.Fragments.ChatFragment.BROADCAST_CHAT;
 import static edu.wineslab.hiro_net.Fragments.ChatFragment.INTENT_EXTRA_MSG;
 import static edu.wineslab.hiro_net.Fragments.ChatFragment.INTENT_EXTRA_NAME;
 import static edu.wineslab.hiro_net.Fragments.ChatFragment.INTENT_EXTRA_UUID;
+import static edu.wineslab.hiro_net.Fragments.ChatFragment.INTENT_EXTRA_LOCATION;
 
 public class ChatActivity extends AppCompatActivity {
     private String conversationName;
     private String conversationId;
+    private String conversationLocation;
 
-    @BindView(R.id.txtMessage)
-    EditText textMessage;
+    @BindView(R.id.chat_txtMessage)
+    EditText txtMessage;
 
     MessagesRecyclerViewAdapter messagesAdapter =
             new MessagesRecyclerViewAdapter(new ArrayList<Message>());
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,10 +60,8 @@ public class ChatActivity extends AppCompatActivity {
         // recover our Peer object
         conversationName = getIntent().getStringExtra(INTENT_EXTRA_NAME);
         conversationId = getIntent().getStringExtra(INTENT_EXTRA_UUID);
+        conversationLocation = getIntent().getStringExtra(INTENT_EXTRA_LOCATION);
 
-        // Configure the Toolbar
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
         // Enable the Up button
         ActionBar ab = getSupportActionBar();
         if (ab != null) {
@@ -73,13 +75,13 @@ public class ChatActivity extends AppCompatActivity {
                     @Override
                     public void onReceive(Context context, Intent intent) {
                         Message message = new Message(intent.getStringExtra(INTENT_EXTRA_MSG));
-                        message.setDeviceName(intent.getStringExtra(INTENT_EXTRA_NAME));
+                        message.setPeerName(intent.getStringExtra(INTENT_EXTRA_NAME));
                         message.setDirection(Message.INCOMING_MESSAGE);
                         messagesAdapter.addMessage(message);
                     }
                 }, new IntentFilter(conversationId));
 
-        // configure the recyclerview
+        // configure the RecyclerView
         RecyclerView messagesRecyclerView = findViewById(R.id.message_list);
         LinearLayoutManager mLinearLayoutManager = new LinearLayoutManager(this);
         mLinearLayoutManager.setReverseLayout(true);
@@ -95,11 +97,13 @@ public class ChatActivity extends AppCompatActivity {
 
     @OnClick({R.id.chat_sendButton})
     public void onMessageSend(View v) {
+        Me me = Me.getInstance(this.getBaseContext());
+
         // get the message and push it to the views
-        String messageString = textMessage.getText().toString();
+        String messageString = txtMessage.getText().toString();
         if (messageString.trim().length() > 0) {
             // update the views
-            textMessage.setText("");
+            txtMessage.setText("");
             Message message = new Message(messageString);
             message.setDirection(Message.OUTGOING_MESSAGE);
             messagesAdapter.addMessage(message);
@@ -107,28 +111,25 @@ public class ChatActivity extends AppCompatActivity {
             // create a HashMap object to send
             HashMap<String, Object> content = new HashMap<>();
             content.put("text", messageString);
+            content.put("creator_name", me.getName());
+            content.put("creator_location", me.getLocation());
+            content.put("creator_ID", me.getUuid());
+            content.put("peer_name", me.getName());
+            content.put("peer_location", me.getLocation());
+            content.put("peer_ID", me.getUuid());
+            content.put("peer_type", Peer.DeviceType.RASPBERRY_PI.ordinal());
+            content.put("dest_name", conversationName);
+            content.put("dest_location", conversationLocation);
+            content.put("dest_ID", conversationId);
 
             // send message text to device
-            if (conversationId.equals(BROADCAST_CHAT)) {
-                // we put extra information in broadcast packets since they won't be bound to a session
-                content.put("device_name", Build.MANUFACTURER + " " + Build.MODEL);
-                content.put("device_type", Peer.DeviceType.ANDROID.ordinal());
+            Builder builder = new Builder();
+            builder.setContent(content).setReceiverId(conversationId);
 
-                com.bridgefy.sdk.client.Message.Builder builder = new com.bridgefy.sdk.client.Message.Builder();
-                builder.setContent(content);
-                Bridgefy.sendBroadcastMessage(builder.build(),
-                        BFEngineProfile.BFConfigProfileLongReach);
-            } else {
-
-                com.bridgefy.sdk.client.Message.Builder builder = new com.bridgefy.sdk.client.Message.Builder();
-                builder.setContent(content).setReceiverId(conversationId);
-
-                Bridgefy.sendMessage(builder.build(),
-                        BFEngineProfile.BFConfigProfileLongReach);
-            }
+            Bridgefy.sendMessage(builder.build(),
+                    BFEngineProfile.BFConfigProfileLongReach);
         }
     }
-
 
     /**
      * RECYCLER VIEW CLASSES
@@ -186,18 +187,13 @@ public class ChatActivity extends AppCompatActivity {
 
             MessageViewHolder(View view) {
                 super(view);
-                txtMessage = view.findViewById(R.id.txtMessage);
+                txtMessage = view.findViewById(R.id.textMessage);
             }
 
             void setMessage(Message message) {
                 this.message = message;
 
-                if (message.getDirection() == Message.INCOMING_MESSAGE &&
-                        conversationId.equals(BROADCAST_CHAT)) {
-                    this.txtMessage.setText(message.getDeviceName() + ":\n" + message.getText());
-                } else {
-                    this.txtMessage.setText(message.getText());
-                }
+                txtMessage.setText(message.getPeerName() + ":\n" + message.getText());
             }
         }
     }

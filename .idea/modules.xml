@@ -3,9 +3,9 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/android.iml" filepath="$PROJECT_DIR$/android.iml" />
-      <module fileurl="file://C:\Users\vladi\Documents\Code\Android\android\android.iml" filepath="C:\Users\vladi\Documents\Code\Android\android\android.iml" />
+      <module fileurl="file://C:\Users\vladi\Documents\Code\Android\android\gotenna-sdk\android-gotenna-sdk.iml" filepath="C:\Users\vladi\Documents\Code\Android\android\gotenna-sdk\android-gotenna-sdk.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://C:\Users\vladi\Documents\Code\Android\android\app\app.iml" filepath="C:\Users\vladi\Documents\Code\Android\android\app\app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/gotenna-sdk/gotenna-sdk.iml" filepath="$PROJECT_DIR$/gotenna-sdk/gotenna-sdk.iml" />
     </modules>
   </component>
 </project>

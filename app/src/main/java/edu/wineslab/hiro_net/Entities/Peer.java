@@ -1,36 +1,47 @@
 package edu.wineslab.hiro_net.Entities;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
+import android.support.v4.app.ActivityCompat;
+
 import com.google.gson.Gson;
 
 public class Peer {
-    private String  device_name;
+    private String  name;
     private String  uuid;
-    private boolean isNearby;
-    private DeviceType deviceType;
+    private Location location;
+    private boolean isConnected;
+    private DeviceType type;
 
     public enum DeviceType {
-        UNDEFINED,
+        RASPBERRY_PI,
         ANDROID,
         IPHONE
     }
 
-    public Peer(String uuid, String device_name) {
+    public Peer(String name, String uuid, Location location) {
+        this.name = name;
         this.uuid = uuid;
-        this.device_name = device_name;
+        this.location = location;
     }
 
-    public String getDeviceName() { return device_name; }
+    public String getName() { return name; }
 
     public String getUuid() { return uuid; }
 
-    public DeviceType getDeviceType() { return deviceType; }
+    public Location getLocation() { return location; }
 
-    public void setDeviceType(DeviceType deviceType) { this.deviceType = deviceType; }
+    public boolean getConnectionStatus() { return this.isConnected; }
 
-    public boolean isNearby() { return isNearby; }
+    public DeviceType getType() { return type; }
 
-    public void setNearby(boolean nearby) { isNearby = nearby; }
+    public void setLocation(Location location) { this.location = location; }
 
+    public void setType(DeviceType type) { this.type = type; }
+
+    public void setConnectionStatus(boolean isConnected) { this.isConnected = isConnected; }
 
     public static Peer create(String json) {
         return new Gson().fromJson(json, Peer.class);

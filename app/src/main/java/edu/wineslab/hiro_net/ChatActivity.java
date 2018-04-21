@@ -4,52 +4,60 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Build;
+import android.location.Location;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.bridgefy.sdk.client.BFEngineProfile;
 import com.bridgefy.sdk.client.Bridgefy;
+import com.bridgefy.sdk.client.Message;
 import com.bridgefy.sdk.client.Message.Builder;
+import com.google.gson.Gson;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import edu.wineslab.hiro_net.Entities.DirectMessage;
 import edu.wineslab.hiro_net.Entities.Me;
-import edu.wineslab.hiro_net.Entities.Message;
 import edu.wineslab.hiro_net.Entities.Peer;
+import edu.wineslab.hiro_net.Entities.RoutingTable;
 
 import static edu.wineslab.hiro_net.Fragments.ChatFragment.INTENT_EXTRA_MSG;
 import static edu.wineslab.hiro_net.Fragments.ChatFragment.INTENT_EXTRA_NAME;
 import static edu.wineslab.hiro_net.Fragments.ChatFragment.INTENT_EXTRA_UUID;
 import static edu.wineslab.hiro_net.Fragments.ChatFragment.INTENT_EXTRA_LOCATION;
+import static edu.wineslab.hiro_net.Fragments.ChatFragment.INTENT_EXTRA_NUM_HOPS;
 
 public class ChatActivity extends AppCompatActivity {
-    private String conversationName;
-    private String conversationId;
-    private String conversationLocation;
+    private String TAG = "ChatActivity";
+
+    private String destinationName;
+    private String destinationID;
+    private Location destinationLocation;
+    private int destinationNumHopsFrom;
 
     @BindView(R.id.chat_txtMessage)
     EditText txtMessage;
 
     MessagesRecyclerViewAdapter messagesAdapter =
-            new MessagesRecyclerViewAdapter(new ArrayList<Message>());
+            new MessagesRecyclerViewAdapter(new ArrayList<DirectMessage>());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,29 +65,36 @@ public class ChatActivity extends AppCompatActivity {
         setContentView(R.layout.activity_chat);
         ButterKnife.bind(this);
 
-        // recover our Peer object
-        conversationName = getIntent().getStringExtra(INTENT_EXTRA_NAME);
-        conversationId = getIntent().getStringExtra(INTENT_EXTRA_UUID);
-        conversationLocation = getIntent().getStringExtra(INTENT_EXTRA_LOCATION);
+        // Recover information on destination peer
+        Gson gson = new Gson();
+        destinationName = getIntent().getStringExtra(INTENT_EXTRA_NAME);
+        destinationID = getIntent().getStringExtra(INTENT_EXTRA_UUID);
+        destinationLocation = gson.fromJson(getIntent().getStringExtra(INTENT_EXTRA_LOCATION), Location.class);
+        destinationNumHopsFrom = getIntent().getIntExtra(INTENT_EXTRA_NUM_HOPS, 1);
 
         // Enable the Up button
         ActionBar ab = getSupportActionBar();
         if (ab != null) {
-            ab.setTitle(conversationName);
+            ab.setTitle(destinationName);
             ab.setDisplayHomeAsUpEnabled(true);
         }
 
-        // register the receiver to listen for incoming messages
+        // Register receiver to listen for incoming directMessages
         LocalBroadcastManager.getInstance(getBaseContext())
                 .registerReceiver(new BroadcastReceiver() {
                     @Override
                     public void onReceive(Context context, Intent intent) {
-                        Message message = new Message(intent.getStringExtra(INTENT_EXTRA_MSG));
-                        message.setPeerName(intent.getStringExtra(INTENT_EXTRA_NAME));
-                        message.setDirection(Message.INCOMING_MESSAGE);
-                        messagesAdapter.addMessage(message);
+                        DirectMessage directMessage = new DirectMessage(
+                                destinationID,
+                                destinationName, destinationLocation,
+                                null, null, null, 0,
+                                null, null, null, 0,
+                                null, null, null,
+                                intent.getStringExtra(INTENT_EXTRA_MSG), destinationNumHopsFrom);
+                        directMessage.setDirection(DirectMessage.INCOMING_MESSAGE);
+                        messagesAdapter.addMessage(directMessage);
                     }
-                }, new IntentFilter(conversationId));
+                }, new IntentFilter(destinationID));
 
         // configure the RecyclerView
         RecyclerView messagesRecyclerView = findViewById(R.id.message_list);
@@ -94,40 +109,47 @@ public class ChatActivity extends AppCompatActivity {
         super.onSaveInstanceState(outState);
     }
 
-
     @OnClick({R.id.chat_sendButton})
     public void onMessageSend(View v) {
-        Me me = Me.getInstance(this.getBaseContext());
+        Me me = Me.getInstance(this.getApplicationContext());
+        RoutingTable routingTable = RoutingTable.getInstance(this.getBaseContext());
 
-        // get the message and push it to the views
+        // get the directMessage and push it to the views
         String messageString = txtMessage.getText().toString();
         if (messageString.trim().length() > 0) {
-            // update the views
+            // Erase text box for user
             txtMessage.setText("");
-            Message message = new Message(messageString);
-            message.setDirection(Message.OUTGOING_MESSAGE);
-            messagesAdapter.addMessage(message);
 
-            // create a HashMap object to send
-            HashMap<String, Object> content = new HashMap<>();
-            content.put("text", messageString);
-            content.put("creator_name", me.getName());
-            content.put("creator_location", me.getLocation());
-            content.put("creator_ID", me.getUuid());
-            content.put("peer_name", me.getName());
-            content.put("peer_location", me.getLocation());
-            content.put("peer_ID", me.getUuid());
-            content.put("peer_type", Peer.DeviceType.RASPBERRY_PI.ordinal());
-            content.put("dest_name", conversationName);
-            content.put("dest_location", conversationLocation);
-            content.put("dest_ID", conversationId);
+            // Find next-hop neighbor
+            Peer newNextHop = routingTable.getNextHopByID(destinationID);
 
-            // send message text to device
+            // Compose message
+            DirectMessage directMessage = new DirectMessage(me.getUuid(), me.getName(), me.getLocation(),
+                    me.getUuid(), me.getName(), me.getLocation(), me.getType().ordinal(),
+                    newNextHop.getUuid(), newNextHop.getName(), newNextHop.getLocation(), newNextHop.getType().ordinal(),
+                    destinationID, destinationName, destinationLocation, messageString, 1);
+            // Display as outgoing message
+            directMessage.setDirection(DirectMessage.OUTGOING_MESSAGE);
+            // Display message for user
+            messagesAdapter.addMessage(directMessage);
+
             Builder builder = new Builder();
-            builder.setContent(content).setReceiverId(conversationId);
+            // Send message to the next-hop neighbor
+            builder.setContent(directMessage.getContent()).setReceiverId(newNextHop.getUuid());
+            Message message = builder.build();
+            Bridgefy.sendMessage(message, BFEngineProfile.BFConfigProfileLongReach);
 
-            Bridgefy.sendMessage(builder.build(),
-                    BFEngineProfile.BFConfigProfileLongReach);
+            // Save data for experiments
+            ArrayList<String> data = new ArrayList<String>() {{
+                add(String.valueOf(System.currentTimeMillis()));
+                add(me.getUuid());
+                add(destinationID);
+                add(me.getUuid());
+                add(String.valueOf(routingTable.getNumHopsByID(destinationID)));
+                add(message.getUuid());
+            }};
+            me.save_data(getApplicationContext(), me.getDataHeader(), me.getFileNameSent(),
+                    data);
         }
     }
 
@@ -137,25 +159,25 @@ public class ChatActivity extends AppCompatActivity {
     class MessagesRecyclerViewAdapter
             extends RecyclerView.Adapter<MessagesRecyclerViewAdapter.MessageViewHolder> {
 
-        private final List<Message> messages;
+        private final List<DirectMessage> directMessages;
 
-        MessagesRecyclerViewAdapter(List<Message> messages) {
-            this.messages = messages;
+        MessagesRecyclerViewAdapter(List<DirectMessage> directMessages) {
+            this.directMessages = directMessages;
         }
 
         @Override
         public int getItemCount() {
-            return messages.size();
+            return directMessages.size();
         }
 
-        void addMessage(Message message) {
-            messages.add(0, message);
+        void addMessage(DirectMessage directMessage) {
+            directMessages.add(0, directMessage);
             notifyDataSetChanged();
         }
 
         @Override
         public int getItemViewType(int position) {
-            return messages.get(position).getDirection();
+            return directMessages.get(position).getDirection();
         }
 
         @Override
@@ -163,11 +185,11 @@ public class ChatActivity extends AppCompatActivity {
             View messageView = null;
 
             switch (viewType) {
-                case Message.INCOMING_MESSAGE:
+                case DirectMessage.INCOMING_MESSAGE:
                     messageView = LayoutInflater.from(viewGroup.getContext()).
                             inflate((R.layout.message_incoming), viewGroup, false);
                     break;
-                case Message.OUTGOING_MESSAGE:
+                case DirectMessage.OUTGOING_MESSAGE:
                     messageView = LayoutInflater.from(viewGroup.getContext()).
                             inflate((R.layout.message_outgoing), viewGroup, false);
                     break;
@@ -178,22 +200,24 @@ public class ChatActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(final MessageViewHolder messageHolder, int position) {
-            messageHolder.setMessage(messages.get(position));
+            messageHolder.setDirectMessage(directMessages.get(position));
         }
 
         class MessageViewHolder extends RecyclerView.ViewHolder {
             final TextView txtMessage;
-            Message message;
+            DirectMessage directMessage;
 
             MessageViewHolder(View view) {
                 super(view);
                 txtMessage = view.findViewById(R.id.textMessage);
             }
 
-            void setMessage(Message message) {
-                this.message = message;
+            void setDirectMessage(DirectMessage directMessage) {
+                this.directMessage = directMessage;
 
-                txtMessage.setText(message.getPeerName() + ":\n" + message.getText());
+                String creatorName = (String) directMessage.getContent().get("creator_name");
+                String messageText = (String) directMessage.getContent().get("text");
+                txtMessage.setText(String.format("%s:\n%s", creatorName, messageText));
             }
         }
     }

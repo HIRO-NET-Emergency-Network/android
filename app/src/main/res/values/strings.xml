@@ -8,16 +8,16 @@
     <string name="mail_addressTitle">To:</string>
     <string name="mail_sampleAddress">sample@hiro-net.org</string>
     <string name="mail_subjectTitle">Subject:</string>
-    <string name ="mail_sampleSubject">What is the purpose of this message?</string>
+    <string name ="mail_sampleSubject">What is the purpose of this e-mail?</string>
     <string name="mail_bodyTitle">Body:</string>
-    <string name="mail_sampleBody">What do you want to say in this message?</string>
+    <string name="mail_sampleBody">What do you want to say in this e-mail?</string>
     <string name="mail_send">Send</string>
     <!-- ChatFragment !-->
     <string name="chat_peerListTitle">Active Users in the HIRO-NET Mesh:</string>
     <string name="chat_sampleContent">Enter your message here</string>
     <string name="chat_sendButton">Send your message</string>
     <!-- TweetFragment !-->
-    <string name="tweet_recipientTitle">Direct Message:</string>
+    <string name="tweet_recipientTitle">Tweet Destination:</string>
     <string name="tweet_sampleRecipient">\@(recipient\'s username)</string>
     <string name="tweet_contentTitle">Subject (140 characters or less):</string>
     <string name="tweet_sampleContent">Hello, Twitter!</string>

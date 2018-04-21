@@ -6,6 +6,8 @@
       <module fileurl="file://C:\Users\vladi\Documents\Code\Android\android\gotenna-sdk\android-gotenna-sdk.iml" filepath="C:\Users\vladi\Documents\Code\Android\android\gotenna-sdk\android-gotenna-sdk.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/gotenna-sdk/gotenna-sdk.iml" filepath="$PROJECT_DIR$/gotenna-sdk/gotenna-sdk.iml" />
+      <module fileurl="file://$PROJECT_DIR$/truetime-library/truetime-library.iml" filepath="$PROJECT_DIR$/truetime-library/truetime-library.iml" />
+      <module fileurl="file://$PROJECT_DIR$/truetime-library-ext/truetime-library-ext.iml" filepath="$PROJECT_DIR$/truetime-library-ext/truetime-library-ext.iml" />
     </modules>
   </component>
 </project>

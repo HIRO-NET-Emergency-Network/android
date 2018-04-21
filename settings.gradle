@@ -1,1 +1,1 @@
-include ':app', ':gotenna-sdk'
+include ':app', ':gotenna-sdk', ':truetime-library', ':truetime-library-ext'

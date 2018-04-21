@@ -12,26 +12,31 @@ public class Peer {
     private String  name;
     private String  uuid;
     private Location location;
+    private int numHopsFromMe;
     private boolean isConnected;
     private DeviceType type;
 
     public enum DeviceType {
         RASPBERRY_PI,
         ANDROID,
-        IPHONE
+        IPHONE,
+        UNKNOWN
     }
 
-    public Peer(String name, String uuid, Location location) {
+    public Peer(String name, String uuid, Location location, int numHops) {
         this.name = name;
         this.uuid = uuid;
         this.location = location;
+        this.numHopsFromMe = numHops;
     }
 
-    public String getName() { return name; }
+    public String getName() { return this.name; }
 
-    public String getUuid() { return uuid; }
+    public String getUuid() { return this.uuid; }
 
-    public Location getLocation() { return location; }
+    public Location getLocation() { return this.location; }
+
+    public int getNumHopsFromMe() { return this.numHopsFromMe; }
 
     public boolean getConnectionStatus() { return this.isConnected; }
 
@@ -41,14 +46,19 @@ public class Peer {
 
     public void setType(DeviceType type) { this.type = type; }
 
+    public void setNumHopsFromMe(int numHopsFromMe) { this.numHopsFromMe = numHopsFromMe; }
+
     public void setConnectionStatus(boolean isConnected) { this.isConnected = isConnected; }
 
     public static Peer create(String json) {
         return new Gson().fromJson(json, Peer.class);
     }
 
-    @Override
-    public String toString() {
-        return new Gson().toJson(this);
+    public String locationToString(Location location) {
+        return new Gson().toJson(location);
+    }
+
+    public Location locationFromString(String jsonString) {
+        return new Gson().fromJson(jsonString, Location.class);
     }
 }

@@ -50,7 +50,7 @@ public class ChatActivity extends AppCompatActivity {
 
     private String destinationName;
     private String destinationID;
-    private Location destinationLocation;
+    private String destinationLocation;
     private int destinationNumHopsFrom;
 
     @BindView(R.id.chat_txtMessage)
@@ -69,7 +69,7 @@ public class ChatActivity extends AppCompatActivity {
         Gson gson = new Gson();
         destinationName = getIntent().getStringExtra(INTENT_EXTRA_NAME);
         destinationID = getIntent().getStringExtra(INTENT_EXTRA_UUID);
-        destinationLocation = gson.fromJson(getIntent().getStringExtra(INTENT_EXTRA_LOCATION), Location.class);
+        destinationLocation = getIntent().getStringExtra(INTENT_EXTRA_LOCATION);
         destinationNumHopsFrom = getIntent().getIntExtra(INTENT_EXTRA_NUM_HOPS, 1);
 
         // Enable the Up button

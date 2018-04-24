@@ -7,6 +7,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentPagerAdapter;
@@ -17,6 +18,8 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
+
+import com.bridgefy.sdk.client.Bridgefy;
 
 import edu.wineslab.hiro_net.Entities.Me;
 
@@ -35,14 +38,6 @@ public class MainActivity extends AppCompatActivity {
 
     // Hosts tab's content
     private ViewPager mViewPager;
-
-    // Handles permissions
-    private static final int PERMISSIONS_REQUEST_FINE_LOCATION_ACCESS = 0;
-    private static final int PERMISSIONS_REQUEST_COARSE_LOCATION_ACCESS = 1;
-    private static final int PERMISSIONS_REQUEST_BLUETOOTH = 2;
-    private static final int PERMISSIONS_REQUEST_BLUETOOTH_ADMIN = 3;
-    private static final int PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 4;
-    private static final int PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 5;
 
     // Activity's tag
     private static String TAG = "MainActivity";
@@ -88,42 +83,27 @@ public class MainActivity extends AppCompatActivity {
         LocationListener locationListener = new LocationListener() {
             public void onLocationChanged(Location newLocation) {
                 // Store this device's location
-                if (isMoreAccurateLocation(newLocation, me.getLocation())) {
-                    me.setLocation(newLocation);
-                    Toast.makeText(getBaseContext(), "Location: " + me.getLocation().toString(), Toast.LENGTH_SHORT).show();
+                if (isMoreAccurateLocation(newLocation, me.locationFromString(me.getLocation()))) {
+                    me.setLocation(me.locationToString(newLocation));
+                    Log.d(TAG, "Location: " + me.getLocation());
                 }
             }
-            public void onStatusChanged(String provider, int status, Bundle extras) {}
-            public void onProviderEnabled(String provider) {}
-            public void onProviderDisabled(String provider) {}
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+            }
+            public void onProviderEnabled(String provider) {
+            }
+            public void onProviderDisabled(String provider) {
+            }
         };
-        // Request permissions for all required services
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
-                PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) !=
-                PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},PERMISSIONS_REQUEST_COARSE_LOCATION_ACCESS);
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION},PERMISSIONS_REQUEST_FINE_LOCATION_ACCESS);
-        }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) !=
-                PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) !=
+
+        if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission_group.LOCATION) ==
                         PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH},PERMISSIONS_REQUEST_BLUETOOTH);
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH_ADMIN},PERMISSIONS_REQUEST_BLUETOOTH_ADMIN);
+            assert locationManager != null;
+            // Register listener for GPS
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, (long) 0.0, (float) 0.0, locationListener);
+            // Register listener for WiFi & cellular tower positioning
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, (long) 0.0, (float) 0.0, locationListener);
         }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
-                PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) !=
-                PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
-        }
-        assert locationManager != null;
-        // Register listener for satellite positioning
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, (long) 0.0, (float) 0.0, locationListener);
-        // Register listener for WiFi & cellular tower positioning
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, (long) 0.0, (float) 0.0, locationListener);
     }
 
     @Override
@@ -150,26 +130,9 @@ public class MainActivity extends AppCompatActivity {
         super.onSaveInstanceState(outState);
     }
 
-    // Monitor successful permissions request
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch(requestCode) {
-            case PERMISSIONS_REQUEST_FINE_LOCATION_ACCESS: {
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "User has granted permissions for fine location access");
-                }
-            }
-            case PERMISSIONS_REQUEST_COARSE_LOCATION_ACCESS: {
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "User has granted permissions for coarse location access");
-                }
-            }
-        }
-    }
-
-    private static int MILLISEC_PER_MIN = 1000 * 60;
-
     protected boolean isMoreAccurateLocation(Location location, Location currentLocation) {
+        int MILLISEC_PER_MIN = 1000 * 60;
+
         // A measurement is better than none
         if (currentLocation == null) {
             return true;

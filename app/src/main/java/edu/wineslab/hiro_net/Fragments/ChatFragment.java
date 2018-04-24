@@ -99,12 +99,11 @@ public class ChatFragment extends Fragment {
 
         Me me = Me.getInstance(getActivity().getApplicationContext());
 
-        Bridgefy.initialize(getActivity().getApplicationContext(), API_KEY, new RegistrationListener() {
+        Bridgefy.initialize(getActivity().getBaseContext(), API_KEY, new RegistrationListener() {
             @Override
             public void onRegistrationSuccessful(BridgefyClient bridgefyClient) {
                 startBridgefy();
                 Toast.makeText(getContext(), "Successfully Started Up Bridgefy", Toast.LENGTH_SHORT).show();
-                Toast.makeText(getContext(), bridgefyClient.getUserUuid(), Toast.LENGTH_SHORT).show();
                 me.setType(Peer.DeviceType.ANDROID);
                 me.setUUID(bridgefyClient.getUserUuid());
             }
@@ -124,9 +123,8 @@ public class ChatFragment extends Fragment {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
+        // Automatically handle clicks on Home/Up button, must specify
+        // parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
             case R.id.action_settings:
                 return true;
@@ -143,62 +141,68 @@ public class ChatFragment extends Fragment {
         Bridgefy.setEnergyProfile(BFEnergyProfile.HIGH_PERFORMANCE);
     }
 
-//    // Check if the current device is running Android Things
-//    public boolean isThingsDevice(Context context) {
-//        final PackageManager pm = context.getPackageManager();
-//        return pm.hasSystemFeature("android.hardware.type.embedded");
-//    }
-
     private MessageListener messageListener = new MessageListener() {
         @Override
         public void onMessageReceived(Message message) {
             Me me = Me.getInstance(getActivity().getApplicationContext());
 
             String messageID = message.getUuid();
-            String incomingMessage = (String) message.getContent().get("text");
-            double numHops = (double) message.getContent().get("num_hops");
+            String messageText = (String) message.getContent().get("text");
+            Double numHopsDouble = (Double) message.getContent().get("num_hops");
+            int numHops = numHopsDouble.intValue();
             String creatorName = (String) message.getContent().get("creator_name");
-            Location creatorLoc = (Location) message.getContent().get("creator_location");
+            String creatorLoc = (String) message.getContent().get("creator_location");
             String creatorID = (String) message.getContent().get("creator_ID");
             String senderName = (String) message.getContent().get("sender_name");
-            Location senderLoc = (Location) message.getContent().get("sender_location");
+            String senderLoc = (String) message.getContent().get("sender_location");
             String senderID = message.getSenderId();
             Peer.DeviceType senderType = extractType(message, "sender_type");
             String nextHopName = (String) message.getContent().get("nextHop_name");
-            Location nextHopLoc = (Location) message.getContent().get("nextHop_location");
+            String nextHopLoc = (String) message.getContent().get("nextHop_location");
             String nextHopID = (String) message.getContent().get("nextHop_ID");
             Peer.DeviceType nextHopType = extractType(message, "nextHop_type");
             String destName = (String) message.getContent().get("dest_name");
-            Location destLoc = (Location) message.getContent().get("dest_location");
+            String destLoc = (String) message.getContent().get("dest_location");
             String destID = (String) message.getContent().get("dest_ID");
-            Peer creator = new Peer(creatorName, creatorID, creatorLoc, (int) numHops);
+            Peer creator = new Peer(creatorName, creatorID, creatorLoc, numHops);
+            creator.setType(Peer.DeviceType.UNKNOWN);
             Peer sender = new Peer(senderName, senderID, senderLoc, 1);
+            sender.setType(senderType);
             // MESSAGE "getUuid()" IS DIFFERENT UUID FROM "getSenderId()" and "getReceiverId()"
+
+            DirectMessage directMessage = new DirectMessage(
+                    creatorID, creatorName, creatorLoc,
+                    senderID, senderName, senderLoc, senderType.ordinal(),
+                    nextHopID, nextHopName, nextHopLoc, nextHopType.ordinal(),
+                    destID, destName, destLoc,
+                    messageText, numHops);
 
             RoutingTable routingTable = RoutingTable.getInstance(getActivity().getApplicationContext());
 
-            // Check if we know this sender
-            if (senderName != null && !peersAdapter.peers.contains(sender)) {
-                Log.d(TAG, "Next-hop neighbor introduced itself: " + nextHopName);
+            // Check if we know this sender (CHANGE SO THAT IT CHECKS IF IT CONTAINS SENDER WITH SAME ID)
+            if (senderName != null && !routingTable.hasDestinationID(senderID)) {
+                Log.d(TAG, "Next-hop neighbor introduced itself: " + senderName);
 
                 // Add to list of peers
                 sender.setConnectionStatus(true);
-                sender.setType(senderType);
                 peersAdapter.addPeer(sender);
 
                 final int[] index = {0};
                 for (Peer destination : routingTable.getDestinationList()) {
                     Peer newNextHop = routingTable.getNextHopByID(destination.getUuid());
                     if (!Objects.equals(senderID, newNextHop.getUuid())) {
-                        DirectMessage directMessage =
+                        // Create hello message out of new peer's message
+                        DirectMessage helloMessage =
                                 new DirectMessage(senderID, senderName, senderLoc,                                                              // Creator
                                         me.getUuid(), me.getName(), me.getLocation(), me.getType().ordinal(),                                   // Sender
                                         newNextHop.getUuid(), newNextHop.getName(), newNextHop.getLocation(), newNextHop.getType().ordinal(),   // Next-hop
                                         destination.getUuid(), destination.getName(), destination.getLocation(),                                // Destination
-                                        incomingMessage, (int) numHops + 1);
+                                        "", numHops + 1);
+                        helloMessage.toHelloMessage();
 
                         Message.Builder builder = new Message.Builder();
-                        builder.setContent(directMessage.getContent()).setReceiverId(routingTable.getNextHopByID(destID).getUuid());
+                        builder.setContent(helloMessage.getContent())
+                                .setReceiverId(routingTable.getNextHopByID(destID).getUuid());
                         Message newMessage = builder.build();
                         newMessage.setUuid(messageID);
                         Bridgefy.sendMessage(newMessage);
@@ -215,39 +219,43 @@ public class ChatFragment extends Fragment {
                         me.save_data(getActivity().getApplicationContext(),
                                 me.getDataHeader(), me.getFileNameForward(), data);
                     }
-                    Handler handler = new Handler();
-                    handler.postDelayed(new Runnable() {
-                        public void run() {
-                            index[0]++;
-                        }
-                    }, 1000);
                 }
 
                 // Add to routing table
                 routingTable.addRoute(sender, sender, 1);
+
+                // Save data for experiments
+                ArrayList<String> data = new ArrayList<String>() {{
+                    add(String.valueOf(System.currentTimeMillis()));            // Current time
+                    add(senderID);                                              // Next Hop ID
+                    add("1");                                                   // # of hops
+                    add(senderID);                                              // Destination ID
+                }};
+                me.save_data(getActivity().getApplicationContext(),
+                        me.getDataHeader(), me.getFileNameRoutingTable(), data);
             }
             // Check if we know this creator
-            if (creatorName != null && !peersAdapter.peers.contains(creator)) {
+            if (creatorName != null && !routingTable.hasDestinationID(creatorID)) {
                 Log.d(TAG, "Multi-hop neighbor introduced itself: " + creator.getName());
 
                 // Add to list of peers
                 creator.setConnectionStatus(true);
-                creator.setType(Peer.DeviceType.UNKNOWN);
                 peersAdapter.addPeer(creator);
 
                 final int[] index = {0};
                 for (Peer destination : routingTable.getDestinationList()) {
                     Peer newNextHop = routingTable.getNextHopByID(destination.getUuid());
                     if (!Objects.equals(senderID, newNextHop.getUuid())) {
-                        DirectMessage directMessage =
+                        DirectMessage helloMessage =
                                 new DirectMessage(creatorID, creatorName, creatorLoc,                                                           // Creator
                                         me.getUuid(), me.getName(), me.getLocation(), me.getType().ordinal(),                                   // Sender
                                         newNextHop.getUuid(), newNextHop.getName(), newNextHop.getLocation(), newNextHop.getType().ordinal(),   // Next-hop
                                         destination.getUuid(), destination.getName(), destination.getLocation(),                                // Destination
-                                        incomingMessage, (int) numHops + 1);
+                                        "", (numHops + 1));
 
                         Message.Builder builder = new Message.Builder();
-                        builder.setContent(directMessage.getContent()).setReceiverId(routingTable.getNextHopByID(destID).getUuid());
+                        builder.setContent(helloMessage.getContent())
+                                .setReceiverId(routingTable.getNextHopByID(destID).getUuid());
                         Message newMessage = builder.build();
                         newMessage.setUuid(messageID);
                         Bridgefy.sendMessage(newMessage);
@@ -264,56 +272,48 @@ public class ChatFragment extends Fragment {
                         me.save_data(getActivity().getApplicationContext(),
                                 me.getDataHeader(), me.getFileNameForward(), data);
                     }
-                    Handler handler = new Handler();
-                    handler.postDelayed(new Runnable() {
-                        public void run() {
-                            index[0]++;
-                        }
-                    }, 1000);
+//                    Handler handler = new Handler();
+//                    handler.postDelayed(new Runnable() {
+//                        public void run() {
+//                            index[0]++;
+//                        }
+//                    }, 1000);
                 }
 
                 // Add to routing table
-                routingTable.addRoute(sender, creator, (int) numHops);
+                routingTable.addRoute(sender, creator, numHops);
+
+                // Save data for experiments
+                ArrayList<String> data = new ArrayList<String>() {{
+                    add(String.valueOf(System.currentTimeMillis()));            // Current time
+                    add(senderID);                                             // Next Hop ID
+                    add(String.valueOf(numHops));                               // # of hops
+                    add(creatorID);                                                // Destination ID
+                }};
+                me.save_data(getActivity().getApplicationContext(),
+                        me.getDataHeader(), me.getFileNameRoutingTable(), data);
+            }
+
+            // Update device type of sender, if known
+            if (routingTable.hasDestinationID(senderID)) {
+                for (Peer destination : routingTable.getDestinationList()) {
+                    if (destination.getType() == Peer.DeviceType.UNKNOWN
+                            && senderType != Peer.DeviceType.UNKNOWN) {
+                        peersAdapter.replacePeerByID(senderID, sender);
+                    }
+                }
             }
 
             // Forward message to next-hop neighbor
             if (!Objects.equals(destName, me.getName()) && !Objects.equals(destName, null)) {
                 Peer newNextHop = routingTable.getNextHopByID(destID);
                 if (routingTable.hasDestinationID(destID)) {
-                    HashMap<String, Object> messageContent = message.getContent();
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        messageContent.replace("num_hops", numHops + 1);
-                        // New transmitter
-                        messageContent.replace("sender_name", me.getName());
-                        messageContent.replace("sender_location", me.getLocation());
-                        messageContent.replace("sender_ID", me.getUuid());
-                        messageContent.replace("sender_type", me.getType());
-                        // New next-hop receiver
-                        messageContent.replace("nextHop_name", newNextHop.getName());
-                        messageContent.replace("nextHop_location", newNextHop.getLocation());
-                        messageContent.replace("nextHop_ID", newNextHop.getUuid());
-                        messageContent.replace("nextHop_type", newNextHop.getType().ordinal());
-                    } else {
-                        messageContent.remove("num_hops");
-                        messageContent.remove("nextHop_name");
-                        messageContent.remove("nextHop_location");
-                        messageContent.remove("nextHop_ID");
-                        messageContent.remove("nextHop_type");
-                        messageContent.remove("sender_name");
-                        messageContent.remove("sender_location");
-                        messageContent.remove("sender_ID");
-                        messageContent.remove("sender_type");
-                        messageContent.put("num_hops", numHops + 1);
-                        messageContent.put("nextHop_name", newNextHop.getName());
-                        messageContent.put("nextHop_location", newNextHop.getLocation());
-                        messageContent.put("nextHop_ID", newNextHop.getUuid());
-                        messageContent.put("nextHop_type", newNextHop.getType().ordinal());
-                        messageContent.put("sender_name", me.getName());
-                        messageContent.put("sender_location", me.getLocation());
-                        messageContent.put("sender_ID", me.getUuid());
-                        messageContent.put("sender_type", me.getType());
-                    }
-                    message.setContent(messageContent);
+                    directMessage.setSender(me.getUuid(), me.getName(),
+                            me.getLocation(), me.getType().ordinal());
+                    directMessage.setNextHop(newNextHop.getUuid(), newNextHop.getName(),
+                            newNextHop.getLocation(), newNextHop.getType().ordinal());
+                    directMessage.setNumHops(numHops + 1);
+                    message.setContent(directMessage.getContent());
                     message.setReceiverId(newNextHop.getUuid());
                     message.setUuid(messageID);
                     Bridgefy.sendMessage(message);
@@ -333,16 +333,16 @@ public class ChatFragment extends Fragment {
             }
             // DirectMessage is meant for us
             else if (Objects.equals(destName, me.getName())) {
-                Log.d(TAG, "Incoming private message: " + incomingMessage);
+                Log.d(TAG, "Incoming private message: " + messageText);
                 LocalBroadcastManager.getInstance(getActivity().getApplicationContext()).
                         sendBroadcast(new Intent(message.getSenderId()).
-                                putExtra(INTENT_EXTRA_MSG, incomingMessage));
+                                putExtra(INTENT_EXTRA_MSG, messageText));
             }
             if (isThingsDevice(getActivity().getApplicationContext())) {
                 Peer newNextHop = routingTable.getNextHopByID(destID);
                 if (!Objects.equals(destName, me.getName()) && !Objects.equals(destName, null)) {
                     if (routingTable.hasDestinationID(creatorID)) {
-                        DirectMessage directMessage =
+                        DirectMessage replyMessage =
                                 new DirectMessage(me.getUuid(), me.getName(), me.getLocation(),                                                 // Creator
                                         me.getUuid(), me.getName(), me.getLocation(), Peer.DeviceType.RASPBERRY_PI.ordinal(),                   // Sender
                                         newNextHop.getUuid(), newNextHop.getName(), newNextHop.getLocation(), newNextHop.getType().ordinal(),   // Next-hop
@@ -350,17 +350,18 @@ public class ChatFragment extends Fragment {
                                         "I'm a robot.", 1);
 
                         Message.Builder builder = new Message.Builder();
-                        builder.setContent(directMessage.getContent()).setReceiverId(routingTable.getNextHopByID(destID).getUuid());
+                        builder.setContent(replyMessage.getContent())
+                                .setReceiverId(routingTable.getNextHopByID(destID).getUuid());
                         Bridgefy.sendMessage(builder.build());
 
                         // Save data for experiments
                         ArrayList<String> data = new ArrayList<String>() {{
-                            add(String.valueOf(System.currentTimeMillis()));
-                            add(me.getUuid());
-                            add(creatorID);
-                            add(me.getUuid());
-                            add(String.valueOf(routingTable.getNumHopsByID(destID)));
-                            add(messageID);
+                            add(String.valueOf(System.currentTimeMillis()));            // Current time
+                            add(me.getUuid());                                          // Creator ID
+                            add(creatorID);                                             // Destination ID
+                            add(me.getUuid());                                          // Sender ID
+                            add(String.valueOf(routingTable.getNumHopsByID(destID)));   // # of hops
+                            add(messageID);                                             // Message ID
                         }};
                         me.save_data(getActivity().getApplicationContext(),
                                 me.getDataHeader(), me.getFileNameSent(), data);
@@ -388,21 +389,24 @@ public class ChatFragment extends Fragment {
 
             Me me = Me.getInstance(getActivity().getApplicationContext());
 
-            DirectMessage directMessage = new DirectMessage(
+            DirectMessage helloMessage = new DirectMessage(
                     me.getUuid(), me.getName(), me.getLocation(),                                                   // Creator
                     me.getUuid(), me.getName(), me.getLocation(), me.getType().ordinal(),                           // Sender
                     device.getUserId(), device.getDeviceName(), null, Peer.DeviceType.UNKNOWN.ordinal(),  // Next-hop
                     device.getUserId(), device.getDeviceName(), null,                                        // Destination
                     "", 1);
-            directMessage.toHelloMessage();
+            helloMessage.toHelloMessage();
 
-            RoutingTable routingTable = RoutingTable.getInstance(getActivity().getApplicationContext());
-            for (Peer destination : routingTable.getDestinationList()) {
-                directMessage.setDestination(destination.getUuid(), destination.getName(), destination.getLocation());
-                device.sendMessage(directMessage.getContent());
-            }
+            Log.d(TAG, String.format("Sender's name (in HELLO message): %s", helloMessage.getContent().get("sender_name")));
+            Log.d(TAG, String.format("Creator's name (in HELLO message): %s", helloMessage.getContent().get("creator_name")));
 
-            device.sendMessage(directMessage.getContent());
+            // Send a hello message to the new device
+            device.sendMessage(helloMessage.getContent());
+
+            // This device will also send a hello message
+            // We receive their hello message in the onMessageReceived() function
+            // They receive our hello message in their onMessageReceived() function
+            // ... where we both forward the hello message to all nodes in our routing tables
         }
 
         @Override
@@ -412,7 +416,8 @@ public class ChatFragment extends Fragment {
             peersAdapter.removePeer(peer);
 
             // Update routing table
-            RoutingTable routingTable = RoutingTable.getInstance(getActivity().getApplicationContext());
+            RoutingTable routingTable = RoutingTable
+                    .getInstance(getActivity().getApplicationContext());
             routingTable.removeRouteByID(peer.getUserId());
         }
 
@@ -425,19 +430,6 @@ public class ChatFragment extends Fragment {
             }
         }
     };
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            startBridgefy();
-        } else if (grantResults[0] == PackageManager.PERMISSION_DENIED) {
-            Toast.makeText(getActivity(), "Location permissions needed for peer-discovery.",
-                    Toast.LENGTH_SHORT).show();
-            getActivity().finish();
-        }
-    }
 
     public class RecyclerViewAdapter
             extends RecyclerView.Adapter<RecyclerViewAdapter.PeerViewHolder> {
@@ -457,6 +449,21 @@ public class ChatFragment extends Fragment {
             } else {
                 peers.add(peer);
                 notifyItemInserted(peers.size() - 1);
+            }
+        }
+
+        void replacePeerByID(String peerID, Peer newPeer) {
+            for (Peer peer: peers) {
+                if (Objects.equals(peer.getUuid(), peerID)) {
+                    int position = getPeerPosition(peer.getUuid());
+                    if (position > -1) {
+                        peers.set(position, newPeer);
+                        notifyItemChanged(position);
+                    } else {
+                        peers.add(newPeer);
+                        notifyItemInserted(peers.size() - 1);
+                    }
+                }
             }
         }
 
@@ -508,10 +515,13 @@ public class ChatFragment extends Fragment {
                     case RASPBERRY_PI:
                         this.mContentView.setText(String.format("%s (Pi)", peer.getName()));
                     case ANDROID:
-                        this.mContentView.setText(String.format("%s (android)", peer.getName()));
+                        this.mContentView.setText(String.format("%s (Android)", peer.getName()));
                         break;
                     case IPHONE:
                         this.mContentView.setText(String.format("%s (iPhone)", peer.getName()));
+                        break;
+                    default:
+                        this.mContentView.setText(String.format("%s (Unknown)", peer.getName()));
                         break;
                 }
 
@@ -526,31 +536,9 @@ public class ChatFragment extends Fragment {
                 startActivity(new Intent(getActivity().getApplicationContext(), ChatActivity.class)
                         .putExtra(INTENT_EXTRA_NAME, peer.getName())
                         .putExtra(INTENT_EXTRA_UUID, peer.getUuid())
-                        .putExtra(INTENT_EXTRA_LOCATION, peer.locationToString(peer.getLocation()))
+                        .putExtra(INTENT_EXTRA_LOCATION, peer.getLocation())
                         .putExtra(INTENT_EXTRA_NUM_HOPS, peer.getNumHopsFromMe()));
             }
         }
-    }
-    private static final int MINUTE_IN_MILLISEC = 1000 * 60;
-
-    protected boolean isMoreAccurateLocation(Location location, Location currentLocation) {
-        // A measurement is better than none
-        if (currentLocation == null) {
-            return true;
-        }
-
-        // Is this measurement recent?
-        long timeDelta = location.getTime() - currentLocation.getTime();
-        boolean newer = timeDelta > MINUTE_IN_MILLISEC;
-        boolean older = timeDelta < -MINUTE_IN_MILLISEC;
-
-        if (newer) { return true; }
-        else if (older) { return false; }
-
-        // This measurement is recent
-        // Is it accurate?
-        float accuracyDelta = location.getAccuracy() - currentLocation.getAccuracy();
-
-        return (accuracyDelta < 0.0);
     }
 }

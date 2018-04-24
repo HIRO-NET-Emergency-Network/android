@@ -6,11 +6,12 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.ContactsContract;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.bridgefy.sdk.client.Bridgefy;
+import com.google.gson.Gson;
 import com.instacart.library.truetime.TrueTime;
-import com.instacart.library.truetime.TrueTimeRx;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -37,7 +38,7 @@ public class Me {
     private static Me instance;
     private String  name;
     private String  uuid;
-    private Location location;
+    private String location;
     private Peer.DeviceType type;
     private long clock_offset;
     private String file_name_sent;
@@ -63,12 +64,14 @@ public class Me {
         long offset_time = trueTime.getTime() - System.currentTimeMillis();
         this.clock_offset = offset_time;
 
+        this.clock_offset = 0;
+
         // Where to save experimental data
-        this.file_name_sent = String.format("sent_messages_%s", trueTime.toString());
-        this.file_name_receive = String.format("received_messages_%s", trueTime.toString());
-        this.file_name_forward = String.format("forwarded_messages_%s", trueTime.toString());
-        this.file_name_routing_table = String.format("routing_table_messages_%s", trueTime.toString());
-        this.file_name_clock_offset = String.format("clock_offset_%s", trueTime.toString());
+        this.file_name_sent = String.format("sent_messages_%s.txt", Long.toString(System.currentTimeMillis()));
+        this.file_name_receive = String.format("received_messages_%s.txt", Long.toString(System.currentTimeMillis()));
+        this.file_name_forward = String.format("forwarded_messages_%s.txt", Long.toString(System.currentTimeMillis()));
+        this.file_name_routing_table = String.format("routing_table_messages_%s.txt", Long.toString(System.currentTimeMillis()));
+        this.file_name_clock_offset = String.format("clock_offset_%s.txt", Long.toString(System.currentTimeMillis()));
 
         // Headers for experiment files
         this.data_header = new ArrayList<String>() {{
@@ -105,7 +108,7 @@ public class Me {
 
     public String getUuid() { return uuid; }
 
-    public Location getLocation() { return location; }
+    public String getLocation() { return location; }
 
     public long getTime() { return clock_offset; }
 
@@ -113,7 +116,7 @@ public class Me {
 
     public void setUUID(String uuid) { this.uuid = uuid; }
 
-    public void setLocation(Location location) { this.location = location; }
+    public void setLocation(String location) { this.location = location; }
 
     public void setType(Peer.DeviceType type) { this.type = type; }
 
@@ -147,14 +150,13 @@ public class Me {
         protected Void doInBackground(Void... params) {
             try {
                 TrueTime.build()
-                        .withNtpHost("time.google.com")
+                        .withNtpHost("time.apple.com")
                         .withLoggingEnabled(false)
-                        .withConnectionTimeout(3_1428)
+                        .withConnectionTimeout(20000)
                         .initialize();
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.e("Me",
-                        "Error accessing TrueTime object", e);
+                Log.e("Me", "Error accessing TrueTime object", e);
             }
             return null;
         }
@@ -170,11 +172,8 @@ public class Me {
     public void save_data(Context context, ArrayList<String> header,
                           String fileName, ArrayList data) {
         // Convert arrays to delimited strings
-        String header_str = null, data_str = null;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            header_str = String.join("\t", header);
-            data_str = String.join("\t", data);
-        }
+        String header_str = TextUtils.join("\t", header);
+        String data_str = TextUtils.join("\t", data);
 
         File root = new File(Environment.
                 getExternalStoragePublicDirectory(
@@ -203,5 +202,13 @@ public class Me {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public String locationToString(Location location) {
+        return new Gson().toJson(location);
+    }
+
+    public Location locationFromString(String jsonString) {
+        return new Gson().fromJson(jsonString, Location.class);
     }
 }

@@ -11,7 +11,7 @@ import com.google.gson.Gson;
 public class Peer {
     private String  name;
     private String  uuid;
-    private Location location;
+    private String location;
     private int numHopsFromMe;
     private boolean isConnected;
     private DeviceType type;
@@ -23,7 +23,7 @@ public class Peer {
         UNKNOWN
     }
 
-    public Peer(String name, String uuid, Location location, int numHops) {
+    public Peer(String name, String uuid, String location, int numHops) {
         this.name = name;
         this.uuid = uuid;
         this.location = location;
@@ -34,7 +34,7 @@ public class Peer {
 
     public String getUuid() { return this.uuid; }
 
-    public Location getLocation() { return this.location; }
+    public String getLocation() { return this.location; }
 
     public int getNumHopsFromMe() { return this.numHopsFromMe; }
 
@@ -42,7 +42,7 @@ public class Peer {
 
     public DeviceType getType() { return type; }
 
-    public void setLocation(Location location) { this.location = location; }
+    public void setLocation(String location) { this.location = location; }
 
     public void setType(DeviceType type) { this.type = type; }
 
@@ -52,13 +52,5 @@ public class Peer {
 
     public static Peer create(String json) {
         return new Gson().fromJson(json, Peer.class);
-    }
-
-    public String locationToString(Location location) {
-        return new Gson().toJson(location);
-    }
-
-    public Location locationFromString(String jsonString) {
-        return new Gson().fromJson(jsonString, Location.class);
     }
 }

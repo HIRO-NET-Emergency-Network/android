@@ -4,6 +4,8 @@ import android.content.Context;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -88,36 +90,67 @@ public class RoutingTable {
     }
 
     public void removeRouteByID(String ID) {
-        for (Peer destination: destinations) {
+        // Remove all routes if it is a destination
+        for (Iterator<Peer> iterator = destinations.iterator(); iterator.hasNext(); ) {
+            Peer dest = iterator.next();
             // Check if we have a route with this as destination
-            if (destination.getUuid().equals(ID)) {
-                int index = destinations.indexOf(destination);
+            if (dest.getUuid().equals(ID)) {
+                int index = destinations.indexOf(dest);
                 // Remove the whole entry (all associated routes)
-                destinations.remove(index);
+                iterator.remove();
                 nextHops.remove(index);
                 numHopsFrom.remove(index);
             }
         }
-        for (ArrayList<Peer> nextHopsList : nextHops) {
+        // Remove only routes where it is a next-hop
+        ArrayList<Integer> removeListInds = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> removeEntryInds = new ArrayList<>();
+        for (Iterator<ArrayList<Peer>> listIterator = nextHops.iterator(); listIterator.hasNext(); ) {
+            ArrayList<Peer> nextHopsList = listIterator.next();
+            int listIndex = nextHops.indexOf(nextHopsList);
+            // Collect indices of all routes with this as next-hop
+            ArrayList<Integer> entryInds = new ArrayList<>();
             for (Peer nextHop : nextHopsList) {
+                // Check if we have a route with this as next-hop
                 if (nextHop.getUuid().equals(ID)) {
-                    int entryIndex = nextHops.indexOf(nextHopsList);
-                    int index = nextHopsList.indexOf(nextHop);
+                    int entryIndex = nextHopsList.indexOf(nextHop);
                     if (nextHopsList.size() > 1) {
-                        ArrayList<Integer> numHopsList = numHopsFrom.get(entryIndex);
-                        // Only remove route where this node is the next hop
-                        nextHopsList.remove(nextHop);
-                        numHopsList.remove(index);
-                        numHopsFrom.set(entryIndex, numHopsList);
+                        // Don't remove destinations entry because there still other routes
+                        removeListInds.add(listIndex);
+                        entryInds.add(entryIndex);
+                        ArrayList<Integer> numHopsList = numHopsFrom.get(listIndex);
+                        // Remove number of hops entry corresponding to this node
+                        numHopsList.remove(entryIndex);
+                        numHopsFrom.set(listIndex, numHopsList);
                     } else {
                         // Remove the whole entry (this is the only route)
                         destinations.remove(entryIndex);
-                        nextHops.remove(entryIndex);
+                        listIterator.remove();
                         numHopsFrom.remove(entryIndex);
                     }
                 }
             }
+            removeEntryInds.add(entryInds);
         }
+        // Remove routes where this node is the next hop
+        for (int listInd : removeListInds) {
+            ArrayList<Peer> nextHopsList = nextHops.get(listInd);
+            ArrayList<Integer> entryInds = removeEntryInds.get(listInd);
+            // Remove all routes
+            if (entryInds.size() == nextHopsList.size()) {
+                destinations.remove(listInd);
+                nextHops.remove(listInd);
+                numHopsFrom.remove(listInd);
+            }
+            // Remove only some routes
+            else {
+                for (int entryInd : entryInds) {
+                    nextHopsList.remove(entryInd);
+                }
+                nextHops.set(listInd, nextHopsList);
+            }
+        }
+
     }
 
     public Peer getNextHopByID(String destID) {

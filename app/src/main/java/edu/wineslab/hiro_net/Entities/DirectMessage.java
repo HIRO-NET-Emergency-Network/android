@@ -1,6 +1,5 @@
 package edu.wineslab.hiro_net.Entities;
 
-import android.location.Location;
 import android.os.Build;
 
 import com.google.gson.Gson;
@@ -17,10 +16,10 @@ public class DirectMessage {
     private int      direction;
 
 
-    public DirectMessage(String creatorID, String creatorName, Location creatorLoc,
-                         String senderID, String senderName, Location senderLoc, int senderType,
-                         String nextHopID, String nextHopName, Location nextHopLoc, int nextHopType,
-                         String destID, String destName, Location destLoc,
+    public DirectMessage(String creatorID, String creatorName, String creatorLoc,
+                         String senderID, String senderName, String senderLoc, int senderType,
+                         String nextHopID, String nextHopName, String nextHopLoc, int nextHopType,
+                         String destID, String destName, String destLoc,
                          String text, int numHops) {
         // create a HashMap object to send
         content.put("text", text);
@@ -45,7 +44,7 @@ public class DirectMessage {
         this.content.remove("text");
     }
 
-    public void setCreator(String creatorID, String creatorName, Location creatorLoc) {
+    public void setCreator(String creatorID, String creatorName, String creatorLoc) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             content.replace("creator_ID", creatorID);
             content.replace("creator_name", creatorName);
@@ -60,7 +59,7 @@ public class DirectMessage {
         }
     }
 
-    public void setSender(String senderID, String senderName, Location senderLoc, int senderType) {
+    public void setSender(String senderID, String senderName, String senderLoc, int senderType) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             content.replace("sender_ID", senderID);
             content.replace("sender_name", senderName);
@@ -78,7 +77,7 @@ public class DirectMessage {
         }
     }
 
-    public void setNextHop(String nextHopID, String nextHopName, Location nextHopLoc, int nextHopType) {
+    public void setNextHop(String nextHopID, String nextHopName, String nextHopLoc, int nextHopType) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             content.replace("nextHop_ID", nextHopID);
             content.replace("nextHop_name", nextHopName);
@@ -95,7 +94,7 @@ public class DirectMessage {
         }
     }
 
-    public void setDestination(String destID, String destName, Location destLoc) {
+    public void setDestination(String destID, String destName, String destLoc) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             content.replace("dest_ID", destID);
             content.replace("dest_name", destName);
@@ -117,6 +116,15 @@ public class DirectMessage {
     public void setDirection(int direction) { this.direction = direction; }
 
     public void setContent(HashMap<String, Object> newContent) { this.content = newContent; }
+
+    public void setNumHops(int numHops) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            content.replace("num_hops", numHops);
+        } else {
+            content.remove("num_hops");
+            content.put("num_hops", numHops);
+        }
+    }
 
     public static DirectMessage create(String json) { return new Gson().fromJson(json, DirectMessage.class); }
 
